@@ -80,6 +80,29 @@ function ResponseCard({ msg, onSpeak, onStop, speaking }) {
   )
 }
 
+function saveLearnedWords(breakdown, tamilText, tone) {
+  if (!breakdown?.length) return
+  const learned = JSON.parse(localStorage.getItem('tanglish_learned') || '[]')
+  let added = false
+  breakdown.forEach(item => {
+    if (!item.word || !item.romanized) return
+    const exists = learned.find(l => l.tamil === item.word)
+    if (!exists) {
+      learned.unshift({
+        word: item.romanized,
+        tamil: item.word,
+        transliteration: item.romanized,
+        meaning_en: item.meaning,
+        tone: tone || 'casual',
+        example: tamilText,
+        learnedAt: new Date().toISOString(),
+      })
+      added = true
+    }
+  })
+  if (added) localStorage.setItem('tanglish_learned', JSON.stringify(learned.slice(0, 300)))
+}
+
 export default function Conversation() {
   const navigate = useNavigate()
   const [messages, setMessages] = useState([])
@@ -91,6 +114,14 @@ export default function Conversation() {
   const [autoSpeak, setAutoSpeak] = useState(true)
   const bottomRef = useRef(null)
   const { speak, speaking, stop } = useTTS()
+
+  // Persistent session tracker — one entry per page load
+  const sessionRef = useRef({
+    id: `s_${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    count: 0,
+    preview: null,
+  })
 
   const LANG_OPTIONS = [
     { code: 'hi-IN', label: 'Hindi', flag: 'हि' },
@@ -128,7 +159,10 @@ export default function Conversation() {
 
   const sendMessage = async (input) => {
     if (!input.trim()) return
-    stop() // stop any ongoing TTS before new response
+    stop()
+    const sess = sessionRef.current
+    if (!sess.preview) sess.preview = input
+    sess.count += 1
     setMessages(prev => [...prev, { role: 'user', text: input }])
     setLoading(true)
     setSttError(null)
@@ -136,8 +170,20 @@ export default function Conversation() {
     setTextInput('')
 
     try {
-      const res = await axios.post(`${API_BASE}/chat`, { input })
-      setMessages(prev => [...prev, { role: 'assistant', ...res.data }])
+      const res = await axios.post(`${API_BASE}/chat`, { input, sessionId: sess.id })
+      const data = res.data
+      setMessages(prev => [...prev, { role: 'assistant', ...data }])
+
+      // Persist session history
+      const history = JSON.parse(localStorage.getItem('tanglish_history') || '[]')
+      const idx = history.findIndex(h => h.id === sess.id)
+      const entry = { id: sess.id, timestamp: sess.timestamp, count: sess.count, preview: sess.preview }
+      if (idx >= 0) history[idx] = entry
+      else history.unshift(entry)
+      localStorage.setItem('tanglish_history', JSON.stringify(history.slice(0, 30)))
+
+      // Save new words to slang guide
+      saveLearnedWords(data.breakdown, data.tamil_text, data.tone)
     } catch (err) {
       const errMsg = err.response?.data?.error || 'Something went wrong. Check backend.'
       setMessages(prev => [...prev, {

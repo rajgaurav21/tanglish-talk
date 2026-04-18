@@ -19,19 +19,31 @@ const SLANG_DATA = [
   { word: 'Aama', tamil: 'ஆமா', transliteration: 'Aama', meaning_en: 'Yes / True', meaning_hi: 'Haan / Sahi', tone: 'Agreement', example: 'Aama da, correct!' },
 ]
 
-const TONES = ['All', 'Friendly', 'Casual', 'Cool', 'Playful', 'Formal', 'Caring']
+const TONES = ['All', 'Learned', 'Friendly', 'Casual', 'Cool', 'Playful', 'Formal', 'Caring']
 
 export default function SlangGuide() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [toneFilter, setToneFilter] = useState('All')
   const [expandedIdx, setExpandedIdx] = useState(null)
-  const { speak, speaking } = useTTS()
+  const { speak } = useTTS()
 
-  const filtered = SLANG_DATA.filter(s => {
+  const learnedRaw = JSON.parse(localStorage.getItem('tanglish_learned') || '[]')
+  // Merge: learned words take priority, dedupe hardcoded by Tamil word
+  const learnedTamilSet = new Set(learnedRaw.map(l => l.tamil))
+  const combined = [
+    ...learnedRaw.map(l => ({ ...l, isLearned: true })),
+    ...SLANG_DATA.filter(s => !learnedTamilSet.has(s.tamil)),
+  ]
+
+  const filtered = combined.filter(s => {
     const q = search.toLowerCase()
-    const matchSearch = !q || s.word.toLowerCase().includes(q) || s.meaning_en.toLowerCase().includes(q) || s.meaning_hi.toLowerCase().includes(q)
-    const matchTone = toneFilter === 'All' || s.tone.includes(toneFilter)
+    const matchSearch = !q || s.word.toLowerCase().includes(q) || s.meaning_en.toLowerCase().includes(q) || (s.meaning_hi || '').toLowerCase().includes(q)
+    const matchTone = toneFilter === 'All'
+      ? true
+      : toneFilter === 'Learned'
+        ? s.isLearned
+        : s.tone.toLowerCase().includes(toneFilter.toLowerCase())
     return matchSearch && matchTone
   })
 
@@ -39,9 +51,23 @@ export default function SlangGuide() {
     <div className="min-h-screen bg-surface">
       <TopBar />
       <main className="pt-24 pb-32 px-4 max-w-2xl mx-auto">
-        <div className="mb-8">
-          <h2 className="font-headline font-black text-3xl text-on-surface mb-2">Slang Guide</h2>
-          <p className="font-body text-on-surface-variant">Your pocket dictionary of Chennai street language</p>
+        <div className="flex items-start justify-between mb-8">
+          <div>
+            <h2 className="font-headline font-black text-3xl text-on-surface mb-2">Slang Guide</h2>
+            <p className="font-body text-on-surface-variant">
+              {learnedRaw.length > 0
+                ? `${learnedRaw.length} learned from your chats · ${SLANG_DATA.length} curated`
+                : 'Your pocket dictionary of Chennai street language'}
+            </p>
+          </div>
+          {learnedRaw.length > 0 && (
+            <button
+              onClick={() => { localStorage.removeItem('tanglish_learned'); window.location.reload() }}
+              className="flex items-center gap-1 px-3 py-2 text-error text-sm font-label font-bold hover:bg-error-container/10 rounded-full transition-all shrink-0"
+            >
+              <span className="material-symbols-outlined text-sm">delete</span> Clear learned
+            </button>
+          )}
         </div>
 
         {/* Search */}
@@ -82,13 +108,16 @@ export default function SlangGuide() {
             >
               <div className="flex items-center justify-between px-5 py-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-primary-container rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="font-headline font-black text-on-primary-container text-sm">{s.word[0]}</span>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${s.isLearned ? 'bg-tertiary-container' : 'bg-primary-container'}`}>
+                    <span className={`font-headline font-black text-sm ${s.isLearned ? 'text-on-tertiary-container' : 'text-on-primary-container'}`}>{s.word[0]}</span>
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-headline font-bold text-on-surface">{s.word}</span>
                       <span className="font-body text-sm text-on-surface-variant">— {s.tamil}</span>
+                      {s.isLearned && (
+                        <span className="px-2 py-0.5 bg-tertiary-container text-on-tertiary-container rounded-full font-label text-[10px] font-bold uppercase tracking-wider">Learned</span>
+                      )}
                     </div>
                     <span className="font-body text-xs text-on-surface-variant">{s.meaning_en}</span>
                   </div>

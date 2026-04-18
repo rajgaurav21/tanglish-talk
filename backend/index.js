@@ -16,14 +16,17 @@ The user may speak in Hindi, English, or Tamil.
 RULES:
 - If user asks "what does X mean" or "meaning of X" — explain X and give its actual meaning.
 - If user wants to SAY something — give the Tamil slang equivalent.
-- Always respond as a single valid JSON object with exactly these 5 keys:
-  tamil_text, transliteration, meaning_hi, meaning_en, tone
+- Always respond as a single valid JSON object with exactly these 6 keys:
+  tamil_text, transliteration, meaning_hi, meaning_en, tone, breakdown
 - tone must be one of: casual, friendly, playful, respectful, excited
+- breakdown: array of objects, one per significant word/particle in tamil_text.
+  Each object has: word (Tamil script), romanized (how to pronounce it), meaning (English meaning of just that word)
+  Example: [{{"word":"ரொம்ப","romanized":"Romba","meaning":"very / a lot"}},{{"word":"பசி","romanized":"Pasi","meaning":"hunger"}},{{"word":"டா","romanized":"Da","meaning":"dude (casual suffix)"}}]
 - Use real Chennai slang: machan, da, di, dei, sema, gethu, poda, romba, vaanga, nandri, etc.
 - Tamil text must use Tamil Unicode script.
 - Output ONLY the JSON. No markdown, no explanation, no extra text.
 
-Example: {{"tamil_text":"ரொம்ப பசி டா!","transliteration":"Romba pasi da!","meaning_hi":"Bahut bhook lagi yaar!","meaning_en":"So hungry dude!","tone":"casual"}}`
+Example: {{"tamil_text":"ரொம்ப பசி டா!","transliteration":"Romba pasi da!","meaning_hi":"Bahut bhook lagi yaar!","meaning_en":"So hungry dude!","tone":"casual","breakdown":[{{"word":"ரொம்ப","romanized":"Romba","meaning":"very / a lot"}},{{"word":"பசி","romanized":"Pasi","meaning":"hunger"}},{{"word":"டா","romanized":"Da","meaning":"dude (casual suffix)"}}]}}`
 
 // Per-session chains with their own memory
 const sessionChains = new Map()
@@ -85,6 +88,7 @@ app.post('/chat', async (req, res) => {
       meaning_hi: parsed.meaning_hi || '',
       meaning_en: parsed.meaning_en || '',
       tone: parsed.tone || 'casual',
+      breakdown: Array.isArray(parsed.breakdown) ? parsed.breakdown : [],
       source: 'langchain',
     })
   } catch (err) {

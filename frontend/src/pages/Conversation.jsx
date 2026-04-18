@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import API_BASE from '../config'
 import TopBar from '../components/TopBar'
-import { useSpeechRecognition, useTTS } from '../hooks/useSpeech'
+import { useSpeechRecognition, useTTS, isLangSupportedOnDevice } from '../hooks/useSpeech'
 // useTTS is used only in Conversation (shared via props to ResponseCard)
 
 function ResponseCard({ msg, onSpeak, onStop, speaking }) {
@@ -56,6 +56,25 @@ function ResponseCard({ msg, onSpeak, onStop, speaking }) {
             <p className="font-body text-sm text-on-surface leading-relaxed">{msg.meaning_hi}</p>
           </div>
         </div>
+
+        {/* Word-by-word breakdown */}
+        {msg.breakdown?.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-outline-variant/20">
+            <div className="flex items-center gap-1.5 mb-3">
+              <span className="material-symbols-outlined text-sm text-primary">auto_stories</span>
+              <span className="font-label text-xs font-bold text-on-surface-variant uppercase tracking-widest">Word Breakdown</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {msg.breakdown.map((item, idx) => (
+                <div key={idx} className="flex flex-col items-center bg-primary-container/20 border border-primary-container/40 rounded-xl px-3 py-2 min-w-[72px]">
+                  <span className="font-headline text-base font-bold text-on-surface">{item.word}</span>
+                  <span className="font-label text-[10px] text-primary font-bold italic">{item.romanized}</span>
+                  <span className="font-body text-[10px] text-on-surface-variant text-center mt-0.5 leading-snug">{item.meaning}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -80,6 +99,13 @@ export default function Conversation() {
   ]
 
   const { listening, transcript, error: speechError, startListening, stopListening, setTranscript } = useSpeechRecognition(inputLang)
+
+  // Auto-switch to text when device doesn't support selected language for voice
+  useEffect(() => {
+    if (!isLangSupportedOnDevice(inputLang)) {
+      setInputMode('text')
+    }
+  }, [inputLang])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -246,7 +272,7 @@ export default function Conversation() {
                     : 'bg-surface-container text-on-surface-variant'
                 }`}
               >
-                {l.flag} {l.label}
+                {l.flag} {l.label}{!isLangSupportedOnDevice(l.code) ? ' 📝' : ''}
               </button>
             ))}
           </div>

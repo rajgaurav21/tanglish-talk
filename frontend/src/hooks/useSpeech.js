@@ -1,5 +1,14 @@
 import { useState, useRef, useCallback } from 'react'
 
+// iOS Safari does not support Tamil/Hindi STT — only a handful of languages work
+const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent)
+const IOS_UNSUPPORTED_LANGS = ['ta-IN', 'hi-IN']
+
+export function isLangSupportedOnDevice(lang) {
+  if (isIOS && IOS_UNSUPPORTED_LANGS.includes(lang)) return false
+  return true
+}
+
 export function useSpeechRecognition(lang = 'hi-IN') {
   const [listening, setListening] = useState(false)
   const [transcript, setTranscript] = useState('')
@@ -15,6 +24,12 @@ export function useSpeechRecognition(lang = 'hi-IN') {
 
     if (!SpeechRecognition) {
       setError('Use Chrome or Edge — Safari does not support mic input.')
+      return
+    }
+
+    if (!isLangSupportedOnDevice(lang)) {
+      const name = lang === 'ta-IN' ? 'Tamil' : lang === 'hi-IN' ? 'Hindi' : lang
+      setError(`${name} voice input isn't supported on iPhone. Use the keyboard (📝) instead.`)
       return
     }
 
@@ -62,6 +77,9 @@ export function useSpeechRecognition(lang = 'hi-IN') {
         setError('No speech detected. Tap mic and speak clearly.')
       } else if (e.error === 'network') {
         setError('Network error with speech service. Check connection.')
+      } else if (e.error === 'language-not-supported') {
+        const name = lang === 'ta-IN' ? 'Tamil' : lang === 'hi-IN' ? 'Hindi' : lang
+        setError(`${name} voice isn't supported on this device. Use the keyboard (📝) instead.`)
       } else if (e.error !== 'aborted') {
         setError('Could not understand. Speak clearly and try again.')
       }

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<body>
+<canvas id="c192" width="192" height="192"></canvas>
+<canvas id="c512" width="512" height="512"></canvas>
+<script>
+function draw(id, size) {
+  const canvas = document.getElementById(id);
+  const ctx = canvas.getContext('2d');
+  const r = size * 0.42;
+  // Orange gradient background
+  const grad = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+  grad.addColorStop(0, '#ff7a2c');
+  grad.addColorStop(1, '#9b3f00');
+  ctx.beginPath();
+  ctx.roundRect(0, 0, size, size, size * 0.22);
+  ctx.fillStyle = grad;
+  ctx.fill();
+  // Mic icon
+  ctx.fillStyle = 'white';
+  ctx.font = `bold ${size * 0.52}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🎤', size/2, size/2);
+  return canvas.toDataURL('image/png');
+}
+draw('c192', 192);
+draw('c512', 512);
+</script>
+</body>
+</html>

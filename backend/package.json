@@ -10,6 +10,7 @@
     "dev": "node --watch index.js"
   },
   "dependencies": {
+    "@langchain/anthropic": "^0.3.34",
     "@langchain/groq": "^0.2.4",
     "@langchain/openai": "^0.0.28",
     "cors": "^2.8.5",

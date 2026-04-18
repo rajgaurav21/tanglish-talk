@@ -95,7 +95,7 @@ app.post('/chat', async (req, res) => {
 
 app.get('/health', (_, res) => res.json({
   status: 'ok',
-  engine: 'ChatGroq + LangChain Core',
+  engine: 'Groq + LangChain Core',
   sessions: sessionHistories.size,
   time: new Date().toISOString(),
 }))
